@@ -2,7 +2,6 @@ import socket
 import argparse
 import struct
 
-
 def create_dns_query(domain, query_type="A"):
     """
     Create a DNS query based on the given domain and type.
@@ -28,8 +27,7 @@ def create_dns_query(domain, query_type="A"):
     # Question section
     q_name = b""
     for label in domain.split("."):
-        q_name = struct.pack(f"B{len(label)}s", len(label), label.encode())
-
+        q_name += struct.pack("B", len(label)) + label.encode()
     q_name += b"\x00"  # Terminating byte
 
     if query_type == "A":
@@ -71,39 +69,41 @@ def dns_query(server, port, domain, query_type, timeout, max_retries):
 
         print(response)
 
-        # Parse the response
-        transaction_id, flags, questions, answer_rrs, authority_rrs, additional_rrs = struct.unpack(
-            "!HHHHHH", response[:12]
-        )
+       # Unpacking header
+        transaction_id, flags, questions, answer_rrs, ns_count, ar_count = struct.unpack("!HHHHHH", response[:12])
 
-        print("Transaction ID:", transaction_id)
-        print("Flags:", flags)
-        print("Questions:", questions)
-        print("Answer RRs:", answer_rrs)
-        print("Authority RRs:", authority_rrs)
-        print("Additional RRs:", additional_rrs)
+        print(f"Transaction ID: {transaction_id}")
+        print(f"Flags: {flags}")
+        print(f"Questions: {questions}")
+        print(f"Answer RRs: {answer_rrs}")
+        print(f"Authority RRs: {ns_count}")
+        print(f"Additional RRs: {ar_count}")
 
-        # Parse the question section
-        # q_name = ""
-        # offset = 12
-        # while True:
-        #     length, = struct.unpack("!B", response[offset : offset + 1])
-        #     if length == 0:
-        #         break
+        offset = 12
 
-        #     q_name += response[offset + 1 : offset + length + 1].decode() + "."
-        #     offset += length + 1
+        # Skipping the question section, just for simplicity
+        for _ in range(questions):
+            while response[offset] != 0:
+                label_len = response[offset]
+                offset += label_len + 1
+            offset += 5  # QTYPE + QCLASS
 
-        # q_type, q_class = struct.unpack("!HH", response[offset : offset + 4])
-        # offset += 4
+        print("Answers:")
+        for _ in range(answer_rrs):
+            if offset + 12 > len(response):  # To ensure we have the full record header
+                print("Incomplete record. Exiting.")
+                break
 
-        # print("Question section:")
-        # print("\tName:", q_name)
-        # print("\tType:", q_type)
-        # print("\tClass:", q_class)
+            name_ptr, res_type, res_class, ttl, rd_length = struct.unpack("!HHHLH", response[offset: offset + 12])
+            offset += 10
 
-        # # Parse the answer section
-        # print("Answer section:")
+            if offset + rd_length > len(response):
+                print("Incomplete record data. Exiting.")
+                break
+
+            rdata = response[offset: offset + rd_length]
+            print(f"Type: {res_type}, TTL: {ttl}, Data: {rdata}")
+            offset += rd_length
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='A simple DNS client.')
