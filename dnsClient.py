@@ -28,8 +28,9 @@ def create_dns_query(domain, query_type="A"):
     # Question section
     q_name = b""
     for label in domain.split("."):
-        q_name += struct.pack("B", len(label)) + label.encode()
-    q_name += b"\x00"  # Null terminator
+        q_name = struct.pack(f"B{len(label)}s", len(label), label.encode())
+
+    q_name += b"\x00"  # Terminating byte
 
     if query_type == "A":
         q_type = 1  # A type
@@ -68,9 +69,42 @@ def dns_query(server, port, domain, query_type, timeout, max_retries):
             print("ERROR\tMaximum number of retries exceeded")
             return
 
-        # Parse and handle the response (to be implemented)
-        # ...
-        
+        print(response)
+
+        # Parse the response
+        transaction_id, flags, questions, answer_rrs, authority_rrs, additional_rrs = struct.unpack(
+            "!HHHHHH", response[:12]
+        )
+
+        print("Transaction ID:", transaction_id)
+        print("Flags:", flags)
+        print("Questions:", questions)
+        print("Answer RRs:", answer_rrs)
+        print("Authority RRs:", authority_rrs)
+        print("Additional RRs:", additional_rrs)
+
+        # Parse the question section
+        # q_name = ""
+        # offset = 12
+        # while True:
+        #     length, = struct.unpack("!B", response[offset : offset + 1])
+        #     if length == 0:
+        #         break
+
+        #     q_name += response[offset + 1 : offset + length + 1].decode() + "."
+        #     offset += length + 1
+
+        # q_type, q_class = struct.unpack("!HH", response[offset : offset + 4])
+        # offset += 4
+
+        # print("Question section:")
+        # print("\tName:", q_name)
+        # print("\tType:", q_type)
+        # print("\tClass:", q_class)
+
+        # # Parse the answer section
+        # print("Answer section:")
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='A simple DNS client.')
     parser.add_argument('-t', '--timeout', type=int, default=5, help='Timeout in seconds')
@@ -89,11 +123,13 @@ if __name__ == '__main__':
     elif args.ns:
         query_type = 'NS'
 
+    server_address = args.server.replace('@', '')  # Remove @ if it exists
+
     print("timeout: ", args.timeout)
     print("max-retries: ", args.max_retries)
     print("port: ", args.port)
     print("query_type: ", query_type)
-    print("server: ", args.server)
+    print("server: ", server_address)
     print("name: ", args.name)
-    
 
+    dns_query(server_address, args.port, args.name, query_type, args.timeout, args.max_retries)
