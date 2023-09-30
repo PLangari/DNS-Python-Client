@@ -2,7 +2,14 @@ import socket
 import argparse
 import struct
 
-
+# TODO: return something, so remove prints
+# TODO: take care of DEFAULT values to print
+# TODO: determine how to determine if CNAME, MX, NS are returned or not
+# TODO: print accordingly IFF they are returned
+# TODO: Determine if any additional information is needed to be printed
+# TODO: show NOTFOUND if no records are returned
+# TODO: show errors if errors are found
+# TODO: do the mtfnr report
 def parse_dns_response(response):
     # Unpacking header
     transaction_id, flags, questions, answer_rrs, ns_count, ar_count = struct.unpack(
@@ -95,6 +102,7 @@ def dns_query(server, port, domain, query_type, timeout, max_retries):
 
         retries = 0
         response = None
+        # TODO: start timer here
         while retries < max_retries:
             try:
                 # Send the query
