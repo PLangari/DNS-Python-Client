@@ -1,6 +1,7 @@
 import socket
 import argparse
 import struct
+import time
 
 # TODO: return something, so remove prints
 # TODO: take care of DEFAULT values to print
@@ -102,14 +103,20 @@ def dns_query(server, port, domain, query_type, timeout, max_retries):
 
         retries = 0
         response = None
+        start = 0
+        end = 0
+        runtime = None
         # TODO: start timer here
         while retries < max_retries:
             try:
                 # Send the query
+                start = time.time()
                 sock.sendto(query, (server, port))
 
                 # Await response
                 response, _ = sock.recvfrom(512)
+                end = time.time()
+                runtime = end - start
                 break
             except socket.timeout:
                 retries += 1
@@ -118,6 +125,7 @@ def dns_query(server, port, domain, query_type, timeout, max_retries):
             print("ERROR\tMaximum number of retries exceeded")
             return
 
+        print("Response resceived after", runtime, "seconds, (",retries, "retries)")
         parse_dns_response(response)
 
 
@@ -157,6 +165,9 @@ def input_parser():
 def main():
     server_address, port, domain, timeout, max_retries, query_type = input_parser()
 
+    print("DnsClient sending for", domain)
+    print("Server:", server_address)
+    print("Request type:", query_type)
     dns_query(server_address, port, domain, query_type, timeout, max_retries)
 
 
