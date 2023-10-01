@@ -106,7 +106,6 @@ def dns_query(server, port, domain, query_type, timeout, max_retries):
         start = 0
         end = 0
         runtime = None
-        # TODO: start timer here
         while retries < max_retries:
             try:
                 # Send the query
