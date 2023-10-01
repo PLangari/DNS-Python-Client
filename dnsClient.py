@@ -17,12 +17,12 @@ def parse_dns_response(response):
         "!HHHHHH", response[:12]
     )
 
-    print(f"Transaction ID: {transaction_id}")
-    print(f"Flags: {flags}")
-    print(f"Questions: {questions}")
-    print(f"Answer RRs: {answer_rrs}")
-    print(f"Authority RRs: {ns_count}")
-    print(f"Additional RRs: {ar_count}")
+    # print(f"Transaction ID: {transaction_id}")
+    # print(f"Flags: {flags}")
+    # print(f"Questions: {questions}")
+    # print(f"Answer RRs: {answer_rrs}")
+    # print(f"Authority RRs: {ns_count}")
+    # print(f"Additional RRs: {ar_count}")
 
     offset = 12
 
@@ -33,7 +33,7 @@ def parse_dns_response(response):
             offset += label_len + 1
         offset += 5  # QTYPE + QCLASS
 
-    print("Answers:")
+    print("***Answer Section(",answer_rrs, "records)***")
     for _ in range(answer_rrs):
         if offset + 12 > len(response):  # To ensure we have the full record header
             print("Incomplete record. Exiting.")
@@ -50,6 +50,15 @@ def parse_dns_response(response):
 
         rdata = response[offset : offset + rd_length]
         print(f"Type: {res_type}, TTL: {ttl}, Data: {rdata}")
+        result = ""
+        if res_type == 1:
+            print("IP\t", ".".join([str(int(b)) for b in rdata]),"\t",ttl,"\t")
+        elif res_type == 2:
+            result += "NS\t"
+        elif res_type == 5:
+            result += "CNAME\t"
+        elif res_type == 15:
+            result += "MX\t"
         offset += rd_length
 
 
@@ -122,7 +131,7 @@ def dns_query(server, port, domain, query_type, timeout, max_retries):
 
         if not response:
             print("ERROR\tMaximum number of retries exceeded")
-            return
+            return "ERROR"
 
         print("Response resceived after", runtime, "seconds, (",retries, "retries)")
         parse_dns_response(response)
@@ -168,7 +177,6 @@ def main():
     print("Server:", server_address)
     print("Request type:", query_type)
     dns_query(server_address, port, domain, query_type, timeout, max_retries)
-
 
 if __name__ == "__main__":
     main()
