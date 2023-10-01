@@ -16,6 +16,10 @@ def parse_dns_response(response):
         "!HHHHHH", response[:12]
     )
 
+    if answer_rrs == 0:
+        print("NOTFOUND")
+        return
+    
     offset = 12
 
     # Skipping the question section, just for simplicity
@@ -23,7 +27,7 @@ def parse_dns_response(response):
         while response[offset] != 0:
             label_len = response[offset]
             offset += label_len + 1
-        offset += 5  # QTYPE + QCLASS
+        offset += 5  # termination label  (1 byte) + QTYPE (2 bytes) + QCLASS (2 bytes)
 
     print("***Answer Section(",answer_rrs, "records)***")
     for _ in range(answer_rrs):
