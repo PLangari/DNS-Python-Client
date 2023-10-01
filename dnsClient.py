@@ -5,7 +5,6 @@ import time
 
 # TODO: return something, so remove prints
 # TODO: take care of DEFAULT values to print
-# TODO: determine how to determine if CNAME, MX, NS are returned or not
 # TODO: print accordingly IFF they are returned
 # TODO: Determine if any additional information is needed to be printed
 # TODO: show NOTFOUND if no records are returned
@@ -16,13 +15,6 @@ def parse_dns_response(response):
     transaction_id, flags, questions, answer_rrs, ns_count, ar_count = struct.unpack(
         "!HHHHHH", response[:12]
     )
-
-    # print(f"Transaction ID: {transaction_id}")
-    # print(f"Flags: {flags}")
-    # print(f"Questions: {questions}")
-    # print(f"Answer RRs: {answer_rrs}")
-    # print(f"Authority RRs: {ns_count}")
-    # print(f"Additional RRs: {ar_count}")
 
     offset = 12
 
@@ -36,7 +28,7 @@ def parse_dns_response(response):
     print("***Answer Section(",answer_rrs, "records)***")
     for _ in range(answer_rrs):
         if offset + 12 > len(response):  # To ensure we have the full record header
-            print("Incomplete record. Exiting.")
+            print("ERROR\tIncomplete record. Exiting.")
             break
 
         name_ptr, res_type, res_class, ttl, rd_length = struct.unpack(
@@ -45,20 +37,21 @@ def parse_dns_response(response):
         offset += 10
 
         if offset + rd_length > len(response):
-            print("Incomplete record data. Exiting.")
+            print("ERROR\tIncomplete record data. Exiting.")
             break
 
         rdata = response[offset : offset + rd_length]
         print(f"Type: {res_type}, TTL: {ttl}, Data: {rdata}")
         result = ""
         if res_type == 1:
-            print("IP\t", ".".join([str(int(b)) for b in rdata]),"\t",ttl,"\t")
+            print("IP\t",".".join([str(int(b)) for b in rdata]),"\t",ttl,"\t")
         elif res_type == 2:
-            result += "NS\t"
+            print("NS\t",rdata.decode('utf-8'),"\t",ttl,"\t")
         elif res_type == 5:
-            result += "CNAME\t"
+            print("CNAME\t",rdata[2:].decode('utf-8'),"\t","".join([str(int(b)) for b in rdata[:2]]),"\t",ttl,"\t")
         elif res_type == 15:
-            result += "MX\t"
+            print("MX\t-",rdata.decode('utf-8'),"-\t",ttl,"\t")
+
         offset += rd_length
 
 
@@ -133,7 +126,7 @@ def dns_query(server, port, domain, query_type, timeout, max_retries):
             print("ERROR\tMaximum number of retries exceeded")
             return "ERROR"
 
-        print("Response resceived after", runtime, "seconds, (",retries, "retries)")
+        print("Response resceived after", runtime, "seconds (",retries, "retries)")
         parse_dns_response(response)
 
 
