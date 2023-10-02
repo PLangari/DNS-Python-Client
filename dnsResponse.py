@@ -109,9 +109,6 @@ def process_flags(flags):
     TC_MASK = 0x02  # 00000010
     RD_MASK = 0x01  # 00000001
 
-    # Extract individual flag values
-    print(flags)
-    # flags_byte = int.from_bytes(flags, byteorder='big')
     flags_byte = flags
 
     # AA (Authoritative Answer)
