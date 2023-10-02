@@ -20,15 +20,12 @@ def dns_query(server, port, domain, query_type, timeout, max_retries):
         end = 0
         runtime = None
         # Start timer right before sending serie of queries
-        start = time.time()
         # Send queries until we receive a response or max number of retries reached
         while retries < max_retries:
             try:
                 # Send the query
-                try:
-                    sock.sendto(query, (server, port))
-                except Exception as e:
-                    print(e)
+                start = time.time() 
+                sock.sendto(query, (server, port))
                 # Await response
                 response, _ = sock.recvfrom(1024)
                 end = time.time()
