@@ -85,8 +85,6 @@ def parse_answer_data(response, offset):
     ptr = offset
 
     while True:
-        # print("Bit", ptr, "out of", len(response))
-        # print("Bit:", response[ptr])
         if response[ptr] == 0:
             break
         elif response[ptr] & 0xC0 == 0xC0:
