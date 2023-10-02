@@ -62,8 +62,8 @@ def parse_dns_response(response):
         if offset + rd_length > len(response):
             print("ERROR\tIncomplete record data. Exiting.")
             break
-        rdata = response[offset : offset + rd_length]
-
+        rdata = response[offset : offset + rd_length] 
+        print(response[offset:])
         if res_type == 1:
             print("IP\t",".".join([str(int(b)) for b in rdata]),"\t",ttl,"\t",auth)
         elif res_type == 2:
@@ -91,7 +91,6 @@ def parse_answer_data(response, offset):
             break
         elif response[ptr] & 0xC0 == 0xC0:
             ptr = int(response[ptr+1])
-            offset+=2
         else:
             label_len = response[ptr]
             label = response[ptr + 1 : ptr + 1 + label_len]
