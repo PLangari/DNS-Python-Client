@@ -2,7 +2,7 @@ import struct
 
 def parse_dns_response(response):
     # Unpacking header
-    _, flags, questions, answer_rrs, ____, additional_rrs = struct.unpack(
+    _, flags, questions, answer_rrs, auth_rrs, additional_rrs = struct.unpack(
         "!HHHHHH", response[:12]
     )
     
@@ -28,11 +28,12 @@ def parse_dns_response(response):
             offset += label_len + 1
         offset += 5  # termination label  (1 byte) + QTYPE (2 bytes) + QCLASS (2 bytes)
 
+    # Parse answer section
     print("***Answer Section(",answer_rrs, "records)***")
     for _ in range(answer_rrs):
         if offset + 12 > len(response):  # To ensure we have the full record header
-            print("ERROR\tIncomplete record. Exiting.")
-            break
+            print("ERROR\tIncomplete answer record. Exiting.")
+            return
 
         while True:
             if response[offset] == 0:
@@ -57,11 +58,11 @@ def parse_dns_response(response):
         offset += 4
 
         rd_length = int.from_bytes(response[offset:offset+2], byteorder='big')
-        offset+=2
+        offset += 2
 
         if offset + rd_length > len(response):
-            print("ERROR\tIncomplete record data. Exiting.")
-            break
+            print("ERROR\tIncomplete answer record data. Exiting.")
+            return
         rdata = response[offset : offset + rd_length] 
         
         if res_type == 1:
@@ -79,6 +80,90 @@ def parse_dns_response(response):
             print("MX\t",alias,"\t",pref,"\t",ttl,"\t",auth)
 
         offset += rd_length
+    
+    # Skip over authority section
+    for _ in range(auth_rrs):
+        if offset + 12 > len(response):  # To ensure we have the full record header
+            print("ERROR\tIncomplete authority record. Exiting.")
+            return
+
+        while True:
+            if response[offset] == 0:
+                offset+=1
+                break
+            if response[offset] & 0xC0 == 0xC0:
+                offset += 2
+                break
+            offset += 1
+        
+        offset += 8
+
+        rd_length = int.from_bytes(response[offset:offset+2], byteorder='big')
+        offset += 2
+
+        if offset + rd_length > len(response):
+            print("ERROR\tIncomplete authority record data. Exiting.")
+            break
+        rdata = response[offset : offset + rd_length] 
+        
+
+        offset += rd_length
+
+    # Parse additional section
+    if (additional_rrs > 0):
+        print("***Additional Section(",additional_rrs, "records)***")
+    for _ in range(additional_rrs):
+        if offset + 12 > len(response):  # To ensure we have the full record header
+            print("ERROR\tIncomplete additional record. Exiting.")
+            break
+
+        while True:
+            if response[offset] == 0:
+                offset+=1
+                break
+            if response[offset] & 0xC0 == 0xC0:
+                offset += 2
+                break
+            offset += 1
+
+        res_type = int.from_bytes(response[offset: offset+2], byteorder='big')
+        offset += 2
+
+        # Verify class bits
+        classField = int.from_bytes(response[offset: offset+2], byteorder='big')
+        if classField != 0x0001:
+            print("ERROR\tIncorrect class field in the additional section. Exiting")
+            return
+        offset += 2
+
+        ttl = int.from_bytes(response[offset: offset+4], byteorder='big')
+        offset += 4
+
+        rd_length = int.from_bytes(response[offset:offset+2], byteorder='big')
+        offset += 2
+
+        if offset + rd_length > len(response):
+            print("ERROR\tIncomplete additonal record data. Exiting.")
+            return
+        
+        rdata = response[offset : offset + rd_length] 
+        
+        if res_type == 1:
+            print("IP\t",".".join([str(int(b)) for b in rdata]),"\t",ttl,"\t",auth)
+        elif res_type == 2:
+            alias = parse_answer_data(response, offset)
+            print("NS\t",alias,"\t",ttl,"\t",auth)
+        elif res_type == 5:
+            alias = parse_answer_data(response, offset)
+            print("CNAME\t",alias,"\t",ttl,"\t",auth)
+        elif res_type == 15:
+            pref = int.from_bytes(response[offset:offset+2], "big")
+            offset+=2
+            alias = parse_answer_data(response, offset)
+            print("MX\t",alias,"\t",pref,"\t",ttl,"\t",auth)
+
+        offset += rd_length
+    
 
 def parse_answer_data(response, offset):
     data = []
@@ -132,3 +217,31 @@ def process_flags(flags):
         return "ERROR\t{}".format(response_codes[rcode])
     else:
         return "ERROR\tUnnkown Error"
+
+def skip_auth(response, offset, auth_rrs):
+    for _ in range(auth_rrs):
+        if offset + 12 > len(response):  # To ensure we have the full record header
+            print("ERROR\tIncomplete record. Exiting.")
+            break
+
+        while True:
+            if response[offset] == 0:
+                offset+=1
+                break
+            if response[offset] & 0xC0 == 0xC0:
+                offset += 2
+                break
+            offset += 1
+        
+        offset += 8
+
+        rd_length = int.from_bytes(response[offset:offset+2], byteorder='big')
+        offset += 2
+
+        if offset + rd_length > len(response):
+            print("ERROR\tIncomplete record data. Exiting.")
+            break
+        rdata = response[offset : offset + rd_length] 
+        
+
+        offset += rd_length
