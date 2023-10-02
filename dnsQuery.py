@@ -35,7 +35,7 @@ def dns_query(server, port, domain, query_type, timeout, max_retries):
                 retries += 1
             except Exception as e:
                 print("ERROR\t", e)
-                break
+                return "ERROR"
 
         if not response:
             print("ERROR\tMaximum number of retries", max_retries," exceeded")
