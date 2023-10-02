@@ -13,7 +13,8 @@ def main():
     # Send query
     response = dns_query(server_address, port, domain, query_type, timeout, max_retries)
     # Parse response
-    parse_dns_response(response)
+    if response != "ERROR":
+        parse_dns_response(response)
 
 if __name__ == "__main__":
     main()

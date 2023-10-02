@@ -25,10 +25,12 @@ def dns_query(server, port, domain, query_type, timeout, max_retries):
         while retries < max_retries:
             try:
                 # Send the query
-                sock.sendto(query, (server, port))
-
+                try:
+                    sock.sendto(query, (server, port))
+                except Exception as e:
+                    print(e)
                 # Await response
-                response, _ = sock.recvfrom(512)
+                response, _ = sock.recvfrom(1024)
                 end = time.time()
                 runtime = end - start
                 break
@@ -39,7 +41,7 @@ def dns_query(server, port, domain, query_type, timeout, max_retries):
                 break
 
         if not response:
-            print("ERROR\tMaximum number of retries ", max_retries," exceeded")
+            print("ERROR\tMaximum number of retries", max_retries," exceeded")
             return "ERROR"
 
         print("Response resceived after", runtime, "seconds (",retries, "retries)")

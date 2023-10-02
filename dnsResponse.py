@@ -2,17 +2,26 @@ import struct
 
 def parse_dns_response(response):
     # Unpacking header
-    _, __, questions, answer_rrs, ____, _____ = struct.unpack(
+    _, flags, questions, answer_rrs, ____, additional_rrs = struct.unpack(
         "!HHHHHH", response[:12]
     )
-
+    
+    auth = process_flags(flags)
+    
+    if auth.startswith("ERROR"):
+        print(auth)
+        return
+    elif auth == "NOTFOUND":
+        print(auth)
+        return 
+    
     if answer_rrs == 0:
         print("NOTFOUND")
         return
     
     offset = 12
 
-    # Skipping the question section, just for simplicity
+    # Skipping the question section
     for _ in range(questions):
         while response[offset] != 0:
             label_len = response[offset]
@@ -25,25 +34,108 @@ def parse_dns_response(response):
             print("ERROR\tIncomplete record. Exiting.")
             break
 
-        _, res_type, __, ttl, rd_length = struct.unpack(
-            "!HHHLH", response[offset : offset + 12]
-        )
-        offset += 10
+        while True:
+            if response[offset] == 0:
+                offset+=1
+                break
+            if response[offset] & 0xC0 == 0xC0:
+                offset += 2
+                break
+            offset += 1
+
+        res_type = int.from_bytes(response[offset: offset+2], byteorder='big')
+        offset += 2
+
+        # Verify class bits
+        classField = int.from_bytes(response[offset: offset+2], byteorder='big')
+        if classField != 0x0001:
+            print("ERROR\tIncorrect class field in the answer section. Exiting")
+            return
+        offset += 2
+
+        ttl = int.from_bytes(response[offset: offset+4], byteorder='big')
+        offset += 4
+
+        rd_length = int.from_bytes(response[offset:offset+2], byteorder='big')
+        offset+=2
 
         if offset + rd_length > len(response):
             print("ERROR\tIncomplete record data. Exiting.")
             break
-
         rdata = response[offset : offset + rd_length]
         print(f"Type: {res_type}, TTL: {ttl}, Data: {rdata}")
-        result = ""
+
         if res_type == 1:
-            print("IP\t",".".join([str(int(b)) for b in rdata]),"\t",ttl,"\t")
+            print("IP\t",".".join([str(int(b)) for b in rdata]),"\t",ttl,"\t",auth)
         elif res_type == 2:
-            print("NS\t",rdata.decode('utf-8'),"\t",ttl,"\t")
+            alias = parse_answer_data(response, offset)
+            print("NS\t",alias,"\t",ttl,"\t",auth)
         elif res_type == 5:
-            print("CNAME\t",rdata[2:].decode('utf-8'),"\t","".join([str(int(b)) for b in rdata[:2]]),"\t",ttl,"\t")
+            alias = parse_answer_data(response, offset)
+            print("CNAME\t",alias,"\t",ttl,"\t",auth)
         elif res_type == 15:
-            print("MX\t-",rdata.decode('utf-8'),"-\t",ttl,"\t")
+            pref = int.from_bytes(response[offset:offset+2], "big")
+            offset+=2
+            alias = parse_answer_data(response, offset)
+            print("MX\t",alias,"\t",pref,"\t",ttl,"\t",auth)
 
         offset += rd_length
+
+def parse_answer_data(response, offset):
+    data = []
+    ptr = offset
+
+    while True:
+        # print("Bit", ptr, "out of", len(response))
+        # print("Bit:", response[ptr])
+        if response[ptr] == 0:
+            break
+        elif response[ptr] & 0xC0 == 0xC0:
+            ptr = int(response[ptr+1])
+            offset+=2
+        else:
+            label_len = response[ptr]
+            label = response[ptr + 1 : ptr + 1 + label_len]
+            data.append(label.decode("utf-8"))
+            ptr += label_len + 1
+    
+    return ".".join(data)
+
+def process_flags(flags):
+    # Define constants for flag positions
+    QR_MASK = 0x80  # 10000000
+    OPCODE_MASK = 0x78  # 01111000
+    AA_MASK = 0x04  # 00000100
+    TC_MASK = 0x02  # 00000010
+    RD_MASK = 0x01  # 00000001
+
+    # Extract individual flag values
+    print(flags)
+    # flags_byte = int.from_bytes(flags, byteorder='big')
+    flags_byte = flags
+
+    # AA (Authoritative Answer)
+    is_auth = flags_byte & AA_MASK != 0
+
+    # RCODE (Response Code)
+    rcode = flags_byte & 0x0F
+    response_codes = {
+        0: "No error condition",
+        1: "Format error",
+        2: "Server failure",
+        3: "Name error",
+        4: "Not implemented",
+        5: "Refused",
+    }
+    
+    if rcode == 0:
+        if is_auth:
+            return "auth"
+        else:
+            return "nonauth"
+    elif rcode == 3:
+        return "NOTFOUND"
+    elif rcode in response_codes:
+        return "ERROR\t{}".format(response_codes[rcode])
+    else:
+        return "ERROR\tUnnkown Error"
