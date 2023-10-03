@@ -64,7 +64,8 @@ def parse_dns_response(response):
             print("ERROR\tIncomplete answer record data. Exiting.")
             return
         rdata = response[offset : offset + rd_length] 
-        
+        print(response[offset:])
+        print("RDATA:", rdata)
         if res_type == 1:
             print("IP\t",".".join([str(int(b)) for b in rdata]),"\t",ttl,"\t",auth)
         elif res_type == 2:
@@ -75,11 +76,11 @@ def parse_dns_response(response):
             print("CNAME\t",alias,"\t",ttl,"\t",auth)
         elif res_type == 15:
             pref = int.from_bytes(response[offset:offset+2], "big")
-            offset+=2
+            offset +=2 
             alias = parse_answer_data(response, offset)
             print("MX\t",alias,"\t",pref,"\t",ttl,"\t",auth)
 
-        offset += rd_length
+        offset += rd_length - 2
     
     # Skip over authority section
     for _ in range(auth_rrs):
@@ -97,7 +98,7 @@ def parse_dns_response(response):
             offset += 1
         
         offset += 8
-
+    
         rd_length = int.from_bytes(response[offset:offset+2], byteorder='big')
         offset += 2
 
@@ -119,7 +120,7 @@ def parse_dns_response(response):
 
         while True:
             if response[offset] == 0:
-                offset+=1
+                offset += 1
                 break
             if response[offset] & 0xC0 == 0xC0:
                 offset += 2
