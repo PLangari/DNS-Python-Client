@@ -22,7 +22,7 @@ def input_parser():
     )
     parser.add_argument("-mx", action="store_true", help="Query for MX record")
     parser.add_argument("-ns", action="store_true", help="Query for NS record")
-    parser.add_argument("server", type=str, help="DNS server IP address")
+    parser.add_argument("@server", type=str, help="DNS server IP address")
     parser.add_argument("name", type=str, help="Domain name to query for")
 
     args = parser.parse_args()
@@ -33,7 +33,8 @@ def input_parser():
     elif args.ns:
         query_type = "NS"
 
-    server_address = args.server.replace("@", "")  # Remove @ if it exists
+    server_address = args.__dict__['@server'].replace("@", "")  # Remove @ if it exists
+
     port = args.port
     domain = args.name
     timeout = args.timeout
