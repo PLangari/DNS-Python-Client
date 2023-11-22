@@ -158,6 +158,34 @@ def apply_compression(fft_result, compression_level):
 
     return compressed_fft
 
+def apply_compression(fft_result, compression_level):
+    """
+    Apply compression to the FFT result.
+
+    Parameters:
+        fft_result (np.ndarray): The 2D FFT result.
+        compression_level (float): The percentage of coefficients to keep.
+
+    Returns:
+        np.ndarray: Compressed FFT result.
+    """
+    # Flatten the FFT coefficients
+    flat_fft = np.abs(fft_result).flatten()
+
+    # Sort the coefficients in descending order
+    sorted_indices = np.argsort(flat_fft)[::-1]
+
+    # Determine the threshold index based on compression level
+    threshold_index = int(compression_level * len(sorted_indices))
+
+    # Set coefficients beyond the threshold to zero
+    flat_fft[sorted_indices[threshold_index:]] = 0
+
+    # Reshape the flattened array back to the original shape
+    compressed_fft = flat_fft.reshape(fft_result.shape)
+
+    return compressed_fft
+
 def runtime_comparison(mode=4, min_size_exp=5, max_size_exp=10, num_trials=10):
     """
     Perform runtime complexity comparison between FFT and naive DFT for different problem sizes.
@@ -243,6 +271,22 @@ if __name__ == "__main__":
     elif mode == 3:
         print(f"Compressing and plotting the image: {file_name}")
         # Call the function for compression and plotting
+        fft_transform = fft2d(r_img)
+        compression_levels = [0.0, 0.1, 0.3, 0.5, 0.7, 0.999]
+        plt.figure(figsize=(12,8))
+        for i, complresion_level in enumerate(compression_levels, 1):
+            compressed_fft = apply_compression(fft_transform, complresion_level)
+
+            # Apply inverse FFT
+            reconstructed_img = None
+
+            plt.subplot(2,3, i)
+            plt.imshow(np.abs(reconstructed_img), cmap='gray')
+            plt.title(f"Compression Level: {complresion_level * 100}")
+            plt.xticks([]), plt.yticks([])
+
+            # Print information
+
         fft_transform = fft2d(r_img)
         compression_levels = [0.0, 0.1, 0.3, 0.5, 0.7, 0.999]
         plt.figure(figsize=(12,8))
