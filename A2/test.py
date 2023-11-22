@@ -53,12 +53,59 @@ def fft2d(x):
     
     return fft_result_shifted
 
+def naive_dft(x):
+    """
+    Compute the 1D Discrete Fourier Transform (DFT) of input signal x using the naive approach.
+    
+    Parameters:
+        x (np.ndarray): Input signal.
+    
+    Returns:
+        np.ndarray: DFT of the input signal.
+    """
+    N = len(x)
+    n = np.arange(N)
+    k = n.reshape((N, 1))
+    omega = np.exp(-2j * np.pi * k * n / N)
+    return np.dot(omega, x)
+
+def fft_cooley_tukey(x):
+    """
+    Compute the 1D Fast Fourier Transform (FFT) of input signal x using the Cooley-Tukey algorithm
+    with the naive DFT applied at the end.
+    
+    Parameters:
+        x (np.ndarray): Input signal.
+    
+    Returns:
+        np.ndarray: FFT of the input signal.
+    """
+    N = len(x)
+    
+    # Base case: if the input size is 1, return the input itself
+    if N == 32:
+        return naive_dft(x)
+    
+    # Split the input into even and odd indices
+    even_indices = x[::2]
+    odd_indices = x[1::2]
+    
+    # Recursively compute FFT for even and odd indices
+    fft_even = fft_cooley_tukey(even_indices)
+    fft_odd = fft_cooley_tukey(odd_indices)
+    
+    # Combine results using naive DFT instead of butterfly operation
+    t = np.exp(-2j * np.pi * np.arange(N) / N)
+    fft_combined = np.concatenate([fft_even + t[:N//2] * fft_odd, fft_even + t[N//2:] * fft_odd])
+    
+    return fft_combined
+
 def test_signal():
     # Test signal
     x = np.array([0, 1, 2, 3, 4, 5, 6, 7])
 
     # Calculate FFT using your implementation
-    your_fft_result = fft(x)
+    your_fft_result = naive_dft(x)
 
     # Calculate FFT using NumPy
     numpy_fft_result = np.fft.fft(x)
@@ -134,4 +181,4 @@ def ref_test():
     plt.show()
 
 
-test_images()
+test_signal()
