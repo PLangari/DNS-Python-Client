@@ -83,7 +83,7 @@ def fft_cooley_tukey(x):
     N = len(x)
     
     # Base case: if the input size is 1, return the input itself
-    if N == 32:
+    if N <= 32:
         return naive_dft(x)
     
     # Split the input into even and odd indices
@@ -102,24 +102,28 @@ def fft_cooley_tukey(x):
 
 def test_signal():
     # Test signal
-    x = np.array([0, 1, 2, 3, 4, 5, 6, 7])
+    x1 = np.array([0, 1, 2, 3, 4, 5, 6, 7])
+    x2 = np.random.randint(0, 100, 512)
+    x3 = np.random.randint(0, 100, 256)
+    x4 = np.random.randint(0, 100, 128)
 
-    # Calculate FFT using your implementation
-    your_fft_result = naive_dft(x)
+    for x in [x1, x2, x3, x4]:
+        # Calculate FFT using your implementation
+        your_fft_result = fft_cooley_tukey(x)
 
-    # Calculate FFT using NumPy
-    numpy_fft_result = np.fft.fft(x)
+        # Calculate FFT using NumPy
+        numpy_fft_result = np.fft.fft(x)
 
-    # Compare the results
-    print("Your FFT Result:", your_fft_result)
-    print("NumPy FFT Result:", numpy_fft_result)
+        # Compare the results
+        # print("Your FFT Result:", your_fft_result)
+        # print("NumPy FFT Result:", numpy_fft_result)
 
-    # Check if the results are close within a certain tolerance
-    tolerance = 1e-10
-    if np.allclose(your_fft_result, numpy_fft_result, rtol=tolerance, atol=tolerance):
-        print("Results are close. Your FFT implementation seems correct.")
-    else:
-        print("Results differ. Please double-check your FFT implementation.")
+        # Check if the results are close within a certain tolerance
+        tolerance = 1e-10
+        if np.allclose(your_fft_result, numpy_fft_result, rtol=tolerance, atol=tolerance):
+            print("Results are close. Your FFT implementation seems correct.")
+        else:
+            print("Results differ. Please double-check your FFT implementation.")
 
 def test_images():
    # Read an image using cv2
