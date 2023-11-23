@@ -81,7 +81,7 @@ def fft_cooley_tukey(x):
     
     return fft_combined
 
-def fft2d(x):
+def fft2d(x, naive=False):
     """
     Compute the 2D Fast Fourier Transform (FFT) of input signal x.
     
@@ -91,13 +91,22 @@ def fft2d(x):
     Returns:
         np.ndarray: 2D FFT of the input signal.
     """
-    # Apply 1D FFT to rows
-    rows_fft = np.apply_along_axis(fft_cooley_tukey, axis=1, arr=x)
-    
-    # Apply 1D FFT to columns
-    cols_fft = np.apply_along_axis(fft_cooley_tukey, axis=0, arr=rows_fft)
+    if not naive:
+        # Apply 1D FFT to rows
+        rows_fft = np.apply_along_axis(fft_cooley_tukey, axis=1, arr=x)
+        
+        # Apply 1D FFT to columns
+        cols_fft = np.apply_along_axis(fft_cooley_tukey, axis=0, arr=rows_fft)
 
-    fft_result_shifted = np.fft.fftshift(cols_fft)
+        fft_result_shifted = np.fft.fftshift(cols_fft)
+    else:
+        # Apply 1D FFT to rows
+        rows_fft = np.apply_along_axis(naive_dft, axis=1, arr=x)
+        
+        # Apply 1D FFT to columns
+        cols_fft = np.apply_along_axis(naive_dft, axis=0, arr=rows_fft)
+
+        fft_result_shifted = np.fft.fftshift(cols_fft)
     
     return fft_result_shifted
 
@@ -149,6 +158,72 @@ def apply_compression(fft_result, compression_level):
 
     return compressed_fft
 
+def runtime_comparison(mode=4, min_size_exp=5, max_size_exp=10, num_trials=10):
+    """
+    Perform runtime complexity comparison between FFT and naive DFT for different problem sizes.
+
+    Parameters:
+        mode (int): The mode of operation (4 for runtime comparison).
+        min_size_exp (int): The minimum exponent for the problem size (2**min_size_exp).
+        max_size_exp (int): The maximum exponent for the problem size (2**max_size_exp).
+        num_trials (int): Number of trials for each problem size.
+
+    Returns:
+        None
+    """
+    problem_sizes = [2**i for i in range(min_size_exp, max_size_exp + 1)]
+
+    fft_runtimes = []
+    naive_dft_runtimes = []
+
+    for size in problem_sizes:
+        # Generate a random 2D array of size x size
+        test_input = np.random.rand(size, size)
+
+        fft_times = []
+        naive_dft_times = []
+
+        for _ in range(num_trials):
+            # Measure runtime for FFT
+            start_time = time.time()
+            fft_result = fft2d(test_input)
+            end_time = time.time()
+            fft_times.append(end_time - start_time)
+
+            # Measure runtime for naive DFT
+            start_time = time.time()
+            naive_dft_result = fft2d(test_input, True)
+            end_time = time.time()
+            naive_dft_times.append(end_time - start_time)
+
+        # Calculate mean and standard deviation for each algorithm
+        mean_fft_time = np.mean(fft_times)
+        mean_naive_dft_time = np.mean(naive_dft_times)
+        std_fft_time = np.std(fft_times)
+        std_naive_dft_time = np.std(naive_dft_times)
+
+        # Record mean runtime for each algorithm
+        fft_runtimes.append(mean_fft_time)
+        naive_dft_runtimes.append(mean_naive_dft_time)
+
+        # Print information
+        print(f"Size: {size}, FFT Mean Time: {mean_fft_time:.6f} seconds, FFT Std Dev: {std_fft_time:.6f} seconds")
+        print(f"Size: {size}, Naive DFT Mean Time: {mean_naive_dft_time:.6f} seconds, Naive DFT Std Dev: {std_naive_dft_time:.6f} seconds")
+
+    # Create a plot
+    plt.plot(problem_sizes, fft_runtimes, label='FFT', marker='o')
+    plt.plot(problem_sizes, naive_dft_runtimes, label='Naive DFT', marker='o')
+    plt.errorbar(problem_sizes, fft_runtimes, yerr=std_fft_time, fmt='o', capsize=5, label='FFT')
+    plt.errorbar(problem_sizes, naive_dft_runtimes, yerr=std_naive_dft_time, fmt='o', capsize=5, label='Naive DFT')
+
+    plt.xscale('log', base=2)
+    plt.yscale('log')
+    plt.xlabel('Problem Size (log scale)')
+    plt.ylabel('Mean Runtime (log scale)')
+    plt.title('Runtime Complexity Comparison: FFT vs Naive DFT')
+    plt.legend()
+    plt.show()
+
 if __name__ == "__main__":
     # Parse the command-line arguments
     mode, file_name = parse_arguments() 
@@ -187,6 +262,7 @@ if __name__ == "__main__":
     elif mode == 4:
         print("Plotting runtime graphs")
         # Call the function for plotting runtime graphs
+        runtime_comparison()
     else:
         print("Invalid mode. Please choose a valid mode: 1, 2, 3, or 4.")
 
