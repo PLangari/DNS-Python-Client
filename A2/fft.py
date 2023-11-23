@@ -34,9 +34,26 @@ def resize(image):
 
     return resized_image
 
-def fft(x):
+def naive_dft(x):
     """
-    Compute the 1D Fast Fourier Transform (FFT) of input signal x.
+    Compute the 1D Discrete Fourier Transform (DFT) of input signal x using the naive approach.
+    
+    Parameters:
+        x (np.ndarray): Input signal.
+    
+    Returns:
+        np.ndarray: DFT of the input signal.
+    """
+    N = len(x)
+    n = np.arange(N)
+    k = n.reshape((N, 1))
+    omega = np.exp(-2j * np.pi * k * n / N)
+    return np.dot(omega, x)
+
+def fft_cooley_tukey(x):
+    """
+    Compute the 1D Fast Fourier Transform (FFT) of input signal x using the Cooley-Tukey algorithm
+    with the naive DFT applied at the end.
     
     Parameters:
         x (np.ndarray): Input signal.
@@ -47,18 +64,18 @@ def fft(x):
     N = len(x)
     
     # Base case: if the input size is 1, return the input itself
-    if N == 1:
-        return x
+    if N <= 32:
+        return naive_dft(x)
     
     # Split the input into even and odd indices
     even_indices = x[::2]
     odd_indices = x[1::2]
     
     # Recursively compute FFT for even and odd indices
-    fft_even = fft(even_indices)
-    fft_odd = fft(odd_indices)
+    fft_even = fft_cooley_tukey(even_indices)
+    fft_odd = fft_cooley_tukey(odd_indices)
     
-    # Combine results using FFT butterfly operation
+    # Combine results using naive DFT instead of butterfly operation
     t = np.exp(-2j * np.pi * np.arange(N) / N)
     fft_combined = np.concatenate([fft_even + t[:N//2] * fft_odd, fft_even + t[N//2:] * fft_odd])
     
@@ -75,10 +92,10 @@ def fft2d(x):
         np.ndarray: 2D FFT of the input signal.
     """
     # Apply 1D FFT to rows
-    rows_fft = np.apply_along_axis(fft, axis=1, arr=x)
+    rows_fft = np.apply_along_axis(fft_cooley_tukey, axis=1, arr=x)
     
     # Apply 1D FFT to columns
-    cols_fft = np.apply_along_axis(fft, axis=0, arr=rows_fft)
+    cols_fft = np.apply_along_axis(fft_cooley_tukey, axis=0, arr=rows_fft)
 
     fft_result_shifted = np.fft.fftshift(cols_fft)
     
